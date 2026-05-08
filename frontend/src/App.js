@@ -4,18 +4,18 @@ import "./App.css";
 function App() {
   const [image, setImage] = useState(null);
   const [imageFile, setImageFile] = useState(null);
-  const [symptoms, setSymptoms] = useState("");
-  const [location, setLocation] = useState("");
-  const [result, setResult] = useState(null);
+  const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [error, setError] = useState(null);
   const fileRef = useRef();
 
   const handleFile = (file) => {
     if (!file) return;
     setImageFile(file);
     setImage(URL.createObjectURL(file));
-    setResult(null);
+    setResults(null);
+    setError(null);
   };
 
   const handleDrop = (e) => {
@@ -24,44 +24,50 @@ function App() {
     handleFile(e.dataTransfer.files[0]);
   };
 
-  const handleSubmit = async () => {
-    if (!imageFile) return;
-    setLoading(true);
-    setResult(null);
-    const form = new FormData();
-    form.append("file", imageFile);
-    form.append("symptoms", symptoms);
-    form.append("location", location);
-    try {
-      const res = await fetch("http://127.0.0.1:8000/identify", {
-        method: "POST",
-        body: form,
-      });
-      const data = await res.json();
-      setResult(data);
-    } catch (e) {
-      alert("Could not reach the server. Is it running?");
-    }
-    setLoading(false);
-  };
+const handleSubmit = async () => {
+  if (!imageFile) return;
+  setLoading(true);
+  setResults(null);
+  setError(null);
 
-  const urgencyConfig = {
-    green:  { label: "LOW RISK",    color: "#4ade80", bg: "rgba(74,222,128,0.1)"  },
-    yellow: { label: "MONITOR",     color: "#fbbf24", bg: "rgba(251,191,36,0.1)"  },
-    red:    { label: "SEE A DOCTOR",color: "#f87171", bg: "rgba(248,113,113,0.1)" },
+  try {
+    const { Client } = await import("https://esm.sh/@gradio/client");
+    const client = await Client.connect("daphnezlin/plant-disease-identifier");
+    const result = await client.predict("/predict", { image: imageFile });
+    setResults(result.data[0].confidences);
+  } catch (e) {
+    setError("Something went wrong. Please try again.");
+  }
+  setLoading(false);
+};
+
+  const formatLabel = (raw) => {
+    const parts = raw.split("___");
+    const plant = parts[0].replace(/_/g, " ");
+    const disease = parts[1] ? parts[1].replace(/_/g, " ") : "Healthy";
+    return { plant, disease };
   };
 
   return (
     <div className="app">
-      <div className="grain" />
-
-      <header className="header">
-        <div className="logo">🔬 BiteCheck</div>
-        <p className="tagline">AI-powered bug bite identification</p>
+      <header className="hero">
+        <div className="hero-icon">🌿</div>
+        <h1>Plant Disease Identifier</h1>
+        <p>Upload a photo of a plant leaf for an instant AI-powered diagnosis</p>
       </header>
 
       <main className="main">
-        <div className="card upload-card">
+        <section className="card">
+          <h2 className="section-title">How to use</h2>
+          <ol className="steps">
+            <li><strong>Take a clear photo</strong> of a single leaf — fill the frame, avoid busy backgrounds and shadows.</li>
+            <li><strong>Upload your photo</strong> by clicking the area below or dragging and dropping.</li>
+            <li><strong>Click Identify</strong> to get the top 3 possible conditions with confidence scores.</li>
+          </ol>
+        </section>
+
+        <section className="card">
+          <h2 className="section-title">Upload leaf photo</h2>
           <div
             className={`dropzone ${dragging ? "dragging" : ""} ${image ? "has-image" : ""}`}
             onClick={() => fileRef.current.click()}
@@ -70,12 +76,12 @@ function App() {
             onDrop={handleDrop}
           >
             {image ? (
-              <img src={image} alt="uploaded" className="preview" />
+              <img src={image} alt="uploaded leaf" className="preview" />
             ) : (
               <div className="drop-prompt">
                 <span className="drop-icon">📷</span>
-                <span className="drop-text">Drop a photo or tap to upload</span>
-                <span className="drop-sub">JPG, PNG, HEIC supported</span>
+                <span className="drop-text">Drag and drop your photo here</span>
+                <span className="drop-sub">or click to browse</span>
               </div>
             )}
             <input
@@ -93,81 +99,48 @@ function App() {
             </button>
           )}
 
-          <div className="fields">
-            <div className="field">
-              <label>Symptoms</label>
-              <input
-                type="text"
-                placeholder="e.g. itchy, swollen, appeared 3 hours ago"
-                value={symptoms}
-                onChange={(e) => setSymptoms(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label>Your location</label>
-              <input
-                type="text"
-                placeholder="e.g. Ontario, Canada"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
-          </div>
-
           <button
             className={`identify-btn ${loading ? "loading" : ""}`}
             onClick={handleSubmit}
             disabled={!imageFile || loading}
           >
             {loading ? (
-              <span className="spinner-row"><span className="spinner" /> Analyzing...</span>
-            ) : "Identify Bite"}
+              <span className="spinner-row"><span className="spinner" /> Analysing...</span>
+            ) : "Identify disease"}
           </button>
-        </div>
 
-        {result && (
-          <div className="card results-card">
-            <div className="result-header">
-              <div className="bite-type">
-                <span className="bite-label">Most likely</span>
-                <span className="bite-name">{result.most_likely}</span>
-              </div>
-              <div
-                className="urgency-badge"
-                style={{
-                  color: urgencyConfig[result.urgency]?.color,
-                  background: urgencyConfig[result.urgency]?.bg,
-                  borderColor: urgencyConfig[result.urgency]?.color,
-                }}
-              >
-                {urgencyConfig[result.urgency]?.label}
-              </div>
-            </div>
+          {error && <p className="error">{error}</p>}
+        </section>
 
-            <div className="confidence-row">
-              <span>Confidence</span>
-              <span className="confidence-pill">{result.confidence}</span>
-            </div>
-
-            <div className="divider" />
-
-            <div className="result-section">
-              <h3>📋 Urgency</h3>
-              <p>{result.urgency_reason}</p>
-            </div>
-
-            <div className="result-section">
-              <h3>💊 Treatment</h3>
-              <p>{result.treatment}</p>
-            </div>
-
-            <div className="result-section red-flags">
-              <h3>🚨 Red Flags — See a doctor if:</h3>
-              <p>{result.red_flags}</p>
-            </div>
-
-            <p className="disclaimer">{result.disclaimer}</p>
-          </div>
+        {results && (
+          <section className="card results-card">
+            <h2 className="section-title">Results</h2>
+            {results.map((r, i) => {
+              const { plant, disease } = formatLabel(r.label);
+              const pct = (r.confidence * 100).toFixed(1);
+              return (
+                <div key={i} className={`result-item ${i === 0 ? "top" : ""}`}>
+                  <div className="result-header">
+                    <div>
+                      <span className="result-plant">{plant}</span>
+                      <span className="result-disease">{disease}</span>
+                    </div>
+                    <div className="result-right">
+                      {i === 0 && <span className="top-badge">Top match</span>}
+                      <span className="result-pct">{pct}%</span>
+                    </div>
+                  </div>
+                  <div className="bar-bg">
+                    <div className="bar-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+            <p className="tip">
+              For best results, ensure the leaf is well-lit and fills most of the frame.
+              This model is trained on lab conditions and may be less accurate on real-world photos.
+            </p>
+          </section>
         )}
       </main>
     </div>
