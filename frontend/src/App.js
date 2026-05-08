@@ -56,7 +56,7 @@ function App() {
       <div className="hero">
         <div className="hero-icon"></div>
         <h1>Plant Disease Identifier</h1>
-        <p>Upload a photo of a plant leaf for an instant AI-powered diagnosis</p>
+        <p>Upload a photo of a plant leaf for an instant diagnosis</p>
       </div>
 
       <main className="main">
@@ -139,7 +139,7 @@ function App() {
                       <div className="result-header">
                         <div>
                           <span className="result-plant">{plant}</span>
-                          <span className="result-disease">{disease}</span>
+                          <span className="probability">{disease}</span>
                         </div>
                         <div className="result-right">
                           {i === 0 && <span className="top-badge">Top match</span>}
