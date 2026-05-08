@@ -75,7 +75,7 @@ function App() {
             </ol>
             <div className="example-photo">
               <p className="example-label">Example of a good photo:</p>
-              <img src={exampleLeaf} alt="Example of a clear leaf photo" className="example-img" />
+              <img src={exampleLeaf} alt="Example of a clear leaf" className="example-img" />
             </div>
           </section>
         )}
