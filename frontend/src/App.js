@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { Client } from "@gradio/client";
 import "./App.css";
 
 function App() {
@@ -31,7 +32,6 @@ const handleSubmit = async () => {
   setError(null);
 
   try {
-    const { Client } = await import("https://esm.sh/@gradio/client");
     const client = await Client.connect("daphnezlin/plant-disease-identifier");
     const result = await client.predict("/predict", { image: imageFile });
     setResults(result.data[0].confidences);
