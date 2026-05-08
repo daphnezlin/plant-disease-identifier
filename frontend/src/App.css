@@ -14,7 +14,7 @@
 }
 
 body {
-  background: #0f130a;
+  background: #064e3b;
   color: var(--text);
   font-family: 'DM Sans', sans-serif;
   min-height: 100vh;
@@ -23,10 +23,8 @@ body {
 .app { min-height: 100vh; }
 
 .hero {
-  background: var(--green-dark);
   padding: 3rem 1.5rem 2.5rem;
   text-align: center;
-  border-bottom: 1px solid var(--green-deep);
 }
 
 .hero-icon { font-size: 3rem; margin-bottom: 0.75rem; }
@@ -34,13 +32,13 @@ body {
 .hero h1 {
   font-size: 2rem;
   font-weight: 500;
-  color: var(--green-light);
+  color: white;
   margin-bottom: 0.5rem;
 }
 
 .hero p {
   font-size: 0.95rem;
-  color: var(--green-base);
+  color: white;
   max-width: 420px;
   margin: 0 auto;
   font-weight: 300;
@@ -55,11 +53,44 @@ body {
   gap: 1.2rem;
 }
 
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1.5px solid rgba(99, 153, 34, 0.2);
+  margin-bottom: 0.5rem;
+}
+
+.tab {
+  background: none;
+  border: none;
+  color: #5a7048;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1.5px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab:hover { color: white; }
+
+.tab.active {
+  color: white;
+  border-bottom-color: white;
+}
+
 .card {
-  background: #1a2210;
-  border: 1px solid #2a3d18;
-  border-radius: 14px;
-  padding: 1.5rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid rgba(99, 153, 34, 0.2);
+  border-radius: 0;
+  padding: 2rem 0.5rem;
+}
+
+.card:last-child {
+  border-bottom: none;
 }
 
 .section-title {
@@ -80,7 +111,7 @@ body {
 
 .steps li {
   font-size: 0.9rem;
-  color: #a8b89a;
+  color: white;
   line-height: 1.6;
   font-weight: 300;
 }
@@ -90,9 +121,28 @@ body {
   font-weight: 500;
 }
 
+.example-photo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.example-label {
+  font-size: 0.78rem;
+  color: #5a7048;
+  margin-bottom: 0.5rem;
+}
+
+.example-img {
+  width: 50%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
 .dropzone {
-  border: 1.5px dashed #2a3d18;
-  border-radius: 10px;
+  border: 1.5px dashed rgba(99, 153, 34, 0.4);
+  border-radius: 4px;
   min-height: 180px;
   display: flex;
   align-items: center;
@@ -139,7 +189,7 @@ body {
 .change-btn {
   background: none;
   border: none;
-  color: var(--green-base);
+  color: white;
   font-size: 0.82rem;
   cursor: pointer;
   margin-top: 0.6rem;
@@ -152,8 +202,8 @@ body {
   width: 100%;
   margin-top: 1.2rem;
   padding: 0.85rem;
-  background: var(--green-mid);
-  color: var(--green-light);
+  background: white;
+  color: #064e3b;
   border: none;
   border-radius: 10px;
   font-family: 'DM Sans', sans-serif;
@@ -163,7 +213,7 @@ body {
   transition: background 0.2s, transform 0.15s;
 }
 
-.identify-btn:hover:not(:disabled) { background: var(--green-deep); transform: translateY(-1px); }
+.identify-btn:hover:not(:disabled) { background: #e0ede0; transform: translateY(-1px); }
 .identify-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .spinner-row { display: flex; align-items: center; justify-content: center; gap: 0.6rem; }
@@ -186,15 +236,26 @@ body {
 
 .results-card { animation: fadeUp 0.4s ease both; }
 
-.result-item {
-  padding: 12px 14px;
-  background: #111a0a;
-  border: 1px solid #2a3d18;
-  border-radius: 8px;
-  margin-bottom: 10px;
+.no-results {
+  font-size: 0.88rem;
+  color: #5a7048;
+  font-style: italic;
+  text-align: center;
+  padding: 2rem 0;
 }
 
-.result-item.top { border-color: var(--green-mid); }
+.result-item {
+  padding: 12px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(99, 153, 34, 0.15);
+  border-radius: 0;
+  margin-bottom: 6px;
+}
+
+.result-item.top {
+  border-bottom-color: rgba(99, 153, 34, 0.4);
+}
 
 .result-header {
   display: flex;
@@ -213,7 +274,7 @@ body {
 
 .result-disease {
   display: block;
-  font-size: 0.95rem;
+  font-size: 1.25rem;
   font-weight: 500;
   color: var(--text);
 }
@@ -235,14 +296,14 @@ body {
 }
 
 .result-pct {
-  font-size: 0.95rem;
+  font-size: 0.78rem;
   font-weight: 500;
   color: var(--green-light);
 }
 
 .bar-bg {
   height: 5px;
-  background: #2a3d18;
+  background: rgba(99, 153, 34, 0.15);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -262,7 +323,7 @@ body {
   color: #5a7048;
   line-height: 1.6;
   font-style: italic;
-  border-left: 2px solid #2a3d18;
+  border-left: 2px solid rgba(99, 153, 34, 0.2);
   padding-left: 0.75rem;
 }
 
