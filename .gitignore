@@ -1,0 +1,6 @@
+.DS_Store
+venv/
+__pycache__/
+*.pyc
+huggingface/plant_disease_model.pkl
+huggingface/plant_disease_model.onnx
