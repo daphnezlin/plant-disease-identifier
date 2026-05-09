@@ -16,7 +16,7 @@ def format_label(raw_label):
     parts = raw_label.split("___")
     plant = parts[0].replace("_", " ")
     disease = parts[1].replace("_", " ") if len(parts) > 1 else "Healthy"
-    return f"{plant} — {disease}"
+    return f"{plant}: {disease}"
 
 def predict(image):
     image = image.resize((224, 224))
@@ -38,7 +38,7 @@ demo = gr.Interface(
     fn=predict,
     inputs=gr.Image(type="pil", label="Upload a plant photo"),
     outputs=gr.Label(num_top_classes=3, label="Diagnosis"),
-    title="🌿 Plant Disease Detector",
+    title="Plant Disease Detector",
     description="Upload a photo of a plant leaf and I'll identify any diseases."
 )
 
