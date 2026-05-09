@@ -93,7 +93,7 @@ function App() {
                 <img src={image} alt="uploaded leaf" className="preview" />
               ) : (
                 <div className="drop-prompt">
-                  <span className="drop-icon">📷</span>
+                  <span className="drop-icon"></span>
                   <span className="drop-text">Drag and drop your photo here</span>
                   <span className="drop-sub">or click to browse</span>
                 </div>
