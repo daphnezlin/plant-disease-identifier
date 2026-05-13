@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Client } from "@gradio/client";
 import "./App.css";
 import exampleLeaf from './appleblackrot.jpeg';
+import treatments from './treatments.json';
 
 function App() {
   const [image, setImage] = useState(null);
@@ -45,7 +46,7 @@ function App() {
   const formatLabel = (raw) => {
     const parts = raw.split("___");
     const plant = parts[0].replace(/_/g, " ");
-    const disease = parts[1] ? parts[1].replace(/_/g, " ") : "Probability";
+    const disease = parts[1] ? parts[1].replace(/_/g, " ").toLowerCase() : "";
     return { plant, disease };
   };
 
@@ -131,19 +132,19 @@ function App() {
           <section className="card results-card">
             {results ? (
               <>
+                <p className="heading">Top three matches:</p>
                 {results.map((r, i) => {
                   const { plant, disease } = formatLabel(r.label);
                   const pct = (r.confidence * 100).toFixed(1);
+                  console.log(r.label);
                   return (
                     <div key={i} className={`result-item ${i === 0 ? "top" : ""}`}>
                       <div className="result-header">
                         <div>
-                          <span className="result-plant">{plant}</span>
-                          <span className="probability">{disease}</span>
+                          <span className="result-plant">{plant}{disease ? `: ${disease}` : ""}</span>
                         </div>
                         <div className="result-right">
-                          {i === 0 && <span className="top-badge">Top match</span>}
-                          <span className="result-pct">{pct}%</span>
+                          <span className="result-pct">{pct}% probability</span>
                         </div>
                       </div>
                       <div className="bar-bg">
@@ -152,13 +153,31 @@ function App() {
                     </div>
                   );
                 })}
-                <p className="tip">
-                  For best results, ensure the leaf is well-lit and fills most of the frame.
-                  This model is trained on lab conditions and may be less accurate on real-world photos.
-                </p>
+                {results && results.length > 0 && (() => {
+                  const topLabel = results[0].label;
+                  console.log("Looking up:", topLabel);
+                  const treatment = treatments[topLabel];
+                  console.log("Found treatment:", treatment);
+                  return treatment ? (
+                    <div className="treatment">
+                      <p className="heading">Description:</p>
+                      <p className="treatment-description">{treatment.description}</p>
+                      <p className="heading">Urgency:</p>
+                      <p className={`urgency-badge urgency-${treatment.severity}`}>
+                        {treatment.severity === 'none' ? ' None' : ` ${treatment.urgency}`}
+                      </p>
+                      <p className="heading">What to do:</p>
+                      <ul className="treatment-steps">
+                        {treatment.treatment.map((step, i) => (
+                          <li key={i}>{step}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null;
+                })()}
               </>
             ) : (
-              <p className="no-results">No results yet — upload a leaf photo and click Identify.</p>
+              <p className="no-results">No results yet- upload a leaf photo and click Identify.</p>
             )}
           </section>
         )}
