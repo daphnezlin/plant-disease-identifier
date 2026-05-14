@@ -71,8 +71,8 @@ function App() {
           <section className="card">
             <ol className="steps">
               <li><strong>Take a clear photo</strong> of a leaf on a grey or other neutrally coloured background, filling the frame.</li>
-              <li><strong>Upload your photo</strong> by clicking the area below or dragging and dropping.</li>
-              <li><strong>Click Identify</strong> to get the top 3 possible conditions with confidence scores.</li>
+              <li><strong>Upload your photo</strong> in the upload tab by clicking the area or dragging and dropping.</li>
+              <li><strong>Click Identify</strong> to get the top 3 possible conditions with confidence scores, plus personalized treatment information.</li>
             </ol>
             <div className="example-photo">
               <p className="example-label">Example of a good photo:</p>
