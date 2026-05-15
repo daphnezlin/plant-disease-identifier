@@ -1,8 +1,59 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Client } from "@gradio/client";
+import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import "./App.css";
-import exampleLeaf from './appleblackrot.jpeg';
+import apple from './appleblackrot.jpeg';
+import cornHealthy from './cornhealthy.jpeg';
+import cornSpot from './corncercosporaleafspot.jpg';
+import strawberry from './strawberryleafscorch.jpeg';
 import treatments from './treatments.json';
+import { supabase } from './supabase';
+
+const contagiousDiseases = [
+  "Apple___Apple_scab",
+  "Apple___Black_rot",
+  "Apple___Cedar_apple_rust",
+  "Cherry_(including_sour)___Powdery_mildew",
+  "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot",
+  "Corn_(maize)___Common_rust_",
+  "Corn_(maize)___Northern_Leaf_Blight",
+  "Grape___Black_rot",
+  "Grape___Esca_(Black_Measles)",
+  "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)",
+  "Orange___Haunglongbing_(Citrus_greening)",
+  "Peach___Bacterial_spot",
+  "Pepper,_bell___Bacterial_spot",
+  "Potato___Early_blight",
+  "Potato___Late_blight",
+  "Squash___Powdery_mildew",
+  "Strawberry___Leaf_scorch",
+  "Tomato___Bacterial_spot",
+  "Tomato___Early_blight",
+  "Tomato___Late_blight",
+  "Tomato___Leaf_Mold",
+  "Tomato___Septoria_leaf_spot",
+  "Tomato___Spider_mites Two-spotted_spider_mite",
+  "Tomato___Target_Spot",
+  "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+  "Tomato___Tomato_mosaic_virus",
+];
+
+const diseaseColorList = [
+  "#ef4444","#f97316","#eab308","#84cc16","#14b8a6",
+  "#06b6d4","#3b82f6","#8b5cf6","#ec4899","#f43f5e",
+  "#a855f7","#0ea5e9","#10b981","#f59e0b","#6366f1",
+  "#d946ef","#fb923c","#facc15","#4ade80","#2dd4bf",
+  "#60a5fa","#c084fc","#f472b6","#fb7185","#a3e635",
+  "#34d399",
+];
+
+const diseaseColorMap = {};
+contagiousDiseases.forEach((d, i) => {
+  diseaseColorMap[d] = diseaseColorList[i];
+});
+
+const getColor = (rawLabel) => diseaseColorMap[rawLabel] || "#639922";
 
 function App() {
   const [image, setImage] = useState(null);
@@ -11,7 +62,25 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState(null);
+  const [shareLocation, setShareLocation] = useState(false);
+  const [mapReports, setMapReports] = useState([]);
+  const [selectedDisease, setSelectedDisease] = useState("all");
+  const [activeTab, setActiveTab] = useState("instructions");
   const fileRef = useRef();
+
+  useEffect(() => {
+    if (activeTab === "map") fetchReports();
+  }, [activeTab]);
+
+  const fetchReports = async () => {
+    const { data, error } = await supabase
+      .from("disease_reports")
+      .select("*")
+      .not("disease", "ilike", "%healthy%")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (!error) setMapReports(data);
+  };
 
   const handleFile = (file) => {
     if (!file) return;
@@ -32,11 +101,21 @@ function App() {
     setLoading(true);
     setResults(null);
     setError(null);
-
     try {
       const client = await Client.connect("daphnezlin/plant-disease-identifier");
       const result = await client.predict("/predict", { image: imageFile });
-      setResults(result.data[0].confidences);
+      const predictions = result.data[0].confidences;
+      setResults(predictions);
+      if (shareLocation && predictions.length > 0) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          await supabase.from("disease_reports").insert({
+            disease: predictions[0].label,
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            confidence: predictions[0].confidence,
+          });
+        });
+      }
     } catch (e) {
       setError("Something went wrong. Please try again.");
     }
@@ -50,136 +129,243 @@ function App() {
     return { plant, disease };
   };
 
-  const [activeTab, setActiveTab] = useState("instructions");
+  const formatLabelShort = (raw) => {
+    const { plant, disease } = formatLabel(raw);
+    return disease ? `${plant}: ${disease}` : plant;
+  };
+
+  const filteredReports = mapReports.filter(
+    (r) => selectedDisease === "all" || r.disease === selectedDisease
+  );
+
+  const topTreatment = results && results.length > 0 ? treatments[results[0].label] : null;
 
   return (
     <div className="app">
-      <div className="hero">
-        <div className="hero-icon"></div>
-        <h1>Plant Disease Identifier</h1>
-        <p>Upload a photo of a plant leaf for an instant diagnosis</p>
-      </div>
+      <nav className="navbar">
+        <span className="navbar-title">Plant Disease Identifier</span>
+        <div className="navbar-tabs">
+          <button className={`nav-tab ${activeTab === "instructions" ? "active" : ""}`} onClick={() => setActiveTab("instructions")}>Instructions</button>
+          <button className={`nav-tab ${activeTab === "upload" ? "active" : ""}`} onClick={() => setActiveTab("upload")}>Upload</button>
+          <button className={`nav-tab ${activeTab === "results" ? "active" : ""}`} onClick={() => setActiveTab("results")}>Results</button>
+          <button className={`nav-tab ${activeTab === "map" ? "active" : ""}`} onClick={() => setActiveTab("map")}>Disease Map</button>
+        </div>
+      </nav>
 
       <main className="main">
-        <div className="tabs">
-          <button className={`tab ${activeTab === "instructions" ? "active" : ""}`} onClick={() => setActiveTab("instructions")}>Instructions</button>
-          <button className={`tab ${activeTab === "upload" ? "active" : ""}`} onClick={() => setActiveTab("upload")}>Upload</button>
-          <button className={`tab ${activeTab === "results" ? "active" : ""}`} onClick={() => setActiveTab("results")}>Results</button>
-        </div>
 
         {activeTab === "instructions" && (
-          <section className="card">
-            <ol className="steps">
-              <li><strong>Take a clear photo</strong> of a leaf on a grey or other neutrally coloured background, filling the frame.</li>
-              <li><strong>Upload your photo</strong> in the upload tab by clicking the area or dragging and dropping.</li>
-              <li><strong>Click Identify</strong> to get the top 3 possible conditions with confidence scores, plus personalized treatment information.</li>
-            </ol>
-            <div className="example-photo">
-              <p className="example-label">Example of a good photo:</p>
-              <img src={exampleLeaf} alt="Example of a clear leaf" className="example-img" />
+          <div className="content-grid instructions-grid">
+            <div>
+              <p className="heading">How to use</p>
+              <ol className="steps">
+                <li><strong>Take a clear picture</strong> of the leaf so it takes up most of or all of the frame. If it doesn't fill the frame, make sure the leaf is on a grey or other neutrally coloured background.</li>
+                <li><strong>Upload your photo</strong> in the Upload tab by clicking the area or dragging and dropping.</li>
+                <li><strong>Click Identify</strong> to get the top 3 possible conditions with confidence scores and treatment information.</li>
+                <li><strong>Optionally share your location</strong> to contribute to the disease outbreak map.</li>
+              </ol>
             </div>
-          </section>
+            <div>
+              <p className="heading">Examples of good photos</p>
+              <div className="example-grid">
+                <div className="example-item">
+                  <img src={apple} alt="Apple black rot" className="example-img" />
+                </div>
+                <div className="example-item">
+                  <img src={cornHealthy} alt="Healthy corn" className="example-img" />
+                </div>
+                <div className="example-item">
+                  <img src={cornSpot} alt="Corn cercospora leaf spot" className="example-img" />
+                </div>
+                <div className="example-item">
+                  <img src={strawberry} alt="Strawberry leaf scorch" className="example-img" />
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {activeTab === "upload" && (
-          <section className="card">
-            <div
-              className={`dropzone ${dragging ? "dragging" : ""} ${image ? "has-image" : ""}`}
-              onClick={() => fileRef.current.click()}
-              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={handleDrop}
-            >
-              {image ? (
-                <img src={image} alt="uploaded leaf" className="preview" />
-              ) : (
-                <div className="drop-prompt">
-                  <span className="drop-icon"></span>
-                  <span className="drop-text">Drag and drop your photo here</span>
-                  <span className="drop-sub">or click to browse</span>
-                </div>
+          <div className="content-grid upload-grid">
+            <div>
+              <p className="heading">Upload leaf photo</p>
+              <div
+                className={`dropzone ${dragging ? "dragging" : ""} ${image ? "has-image" : ""}`}
+                onClick={() => fileRef.current.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+              >
+                {image ? (
+                  <img src={image} alt="uploaded leaf" className="preview" />
+                ) : (
+                  <div className="drop-prompt">
+                    <span className="drop-text">Drag and drop your photo here</span>
+                    <span className="drop-sub">or click to browse</span>
+                  </div>
+                )}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={(e) => handleFile(e.target.files[0])}
+                />
+              </div>
+              {image && (
+                <button className="change-btn" onClick={() => fileRef.current.click()}>
+                  Change photo
+                </button>
               )}
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={(e) => handleFile(e.target.files[0])}
-              />
             </div>
-
-            {image && (
-              <button className="change-btn" onClick={() => fileRef.current.click()}>
-                Change photo
+            <div className="upload-actions">
+              <label className="location-label">
+                <input
+                  type="checkbox"
+                  checked={shareLocation}
+                  onChange={(e) => setShareLocation(e.target.checked)}
+                  className="location-checkbox"
+                />
+                Share my location to help track disease outbreaks
+              </label>
+              <button
+                className={`identify-btn ${loading ? "loading" : ""}`}
+                onClick={async () => { await handleSubmit(); if (!error) setActiveTab("results"); }}
+                disabled={!imageFile || loading}
+              >
+                {loading ? (
+                  <span className="spinner-row"><span className="spinner" /> Analysing...</span>
+                ) : "Identify disease"}
               </button>
-            )}
-
-            <button
-              className={`identify-btn ${loading ? "loading" : ""}`}
-              onClick={async () => { await handleSubmit(); if (!error) setActiveTab("results"); }}
-              disabled={!imageFile || loading}
-            >
-              {loading ? (
-                <span className="spinner-row"><span className="spinner" /> Analysing...</span>
-              ) : "Identify disease"}
-            </button>
-
-            {error && <p className="error">{error}</p>}
-          </section>
+              {error && <p className="error">{error}</p>}
+            </div>
+          </div>
         )}
 
         {activeTab === "results" && (
-          <section className="card results-card">
-            {results ? (
-              <>
-                <p className="heading">Top three matches:</p>
-                {results.map((r, i) => {
-                  const { plant, disease } = formatLabel(r.label);
-                  const pct = (r.confidence * 100).toFixed(1);
-                  console.log(r.label);
-                  return (
-                    <div key={i} className={`result-item ${i === 0 ? "top" : ""}`}>
-                      <div className="result-header">
-                        <div>
-                          <span className="result-plant">{plant}{disease ? `: ${disease}` : ""}</span>
-                        </div>
-                        <div className="result-right">
-                          <span className="result-pct">{pct}% probability</span>
-                        </div>
-                      </div>
-                      <div className="bar-bg">
-                        <div className="bar-fill" style={{ width: `${pct}%` }} />
-                      </div>
+          <div className="content-grid results-grid">
+            <div className="results-image-col">
+              <p className="heading">Uploaded photo</p>
+              {image ? (
+                <img src={image} alt="uploaded leaf" className="results-image" />
+              ) : (
+                <p className="no-results">No photo uploaded yet.</p>
+              )}
+            </div>
+
+            <div className="results-matches-col">
+              <p className="heading">Top three matches</p>
+              {results ? results.map((r, i) => {
+                const { plant, disease } = formatLabel(r.label);
+                const pct = (r.confidence * 100).toFixed(1);
+                return (
+                  <div key={i} className="result-item">
+                    <div className="result-header">
+                      <span className="result-plant">{plant}{disease ? `: ${disease}` : ""}</span>
+                      <span className="result-pct">{pct}%</span>
                     </div>
+                    <div className="bar-bg">
+                      <div className="bar-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              }) : <p className="no-results">No results yet — upload a photo and click Identify.</p>}
+            </div>
+
+            <div className="results-treatment-col">
+              {topTreatment ? (
+                <>
+                  <p className="heading">Description</p>
+                  <p className="treatment-description">{topTreatment.description}</p>
+                  <p className="heading">Urgency</p>
+                  <p className={`urgency-badge urgency-${topTreatment.severity}`}>
+                    {topTreatment.severity === 'none' ? 'None' : topTreatment.urgency}
+                  </p>
+                  <p className="heading">What to do</p>
+                  <ul className="treatment-steps">
+                    {topTreatment.treatment.map((step, i) => (
+                      <li key={i}>{step}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="no-results">Treatment information will appear here after identification.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "map" && (
+          <div className="map-section">
+            <div className="map-header">
+              <div>
+                <p className="heading">Community disease reports</p>
+                <p className="map-subtitle">Showing the 500 most recent contagious disease reports shared by users.</p>
+              </div>
+              <select
+                className="disease-dropdown"
+                value={selectedDisease}
+                onChange={(e) => setSelectedDisease(e.target.value)}
+              >
+                <option value="all">All contagious diseases</option>
+                {contagiousDiseases.map((d) => {
+                  const { plant, disease } = formatLabel(d);
+                  return (
+                    <option key={d} value={d}>
+                      {plant}{disease ? `: ${disease}` : ""}
+                    </option>
                   );
                 })}
-                {results && results.length > 0 && (() => {
-                  const topLabel = results[0].label;
-                  console.log("Looking up:", topLabel);
-                  const treatment = treatments[topLabel];
-                  console.log("Found treatment:", treatment);
-                  return treatment ? (
-                    <div className="treatment">
-                      <p className="heading">Description:</p>
-                      <p className="treatment-description">{treatment.description}</p>
-                      <p className="heading">Urgency:</p>
-                      <p className={`urgency-badge urgency-${treatment.severity}`}>
-                        {treatment.severity === 'none' ? ' None' : ` ${treatment.urgency}`}
-                      </p>
-                      <p className="heading">What to do:</p>
-                      <ul className="treatment-steps">
-                        {treatment.treatment.map((step, i) => (
-                          <li key={i}>{step}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null;
-                })()}
-              </>
-            ) : (
-              <p className="no-results">No results yet- upload a leaf photo and click Identify.</p>
+              </select>
+            </div>
+
+            <div className="map-wrapper">
+              <MapContainer center={[20, 0]} zoom={2} className="map">
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; OpenStreetMap contributors'
+                />
+                {filteredReports.map((report) => {
+                  const { plant, disease } = formatLabel(report.disease);
+                  const color = getColor(report.disease);
+                  return (
+                    <CircleMarker
+                      key={report.id}
+                      center={[report.latitude, report.longitude]}
+                      radius={6}
+                      fillColor={color}
+                      color={color}
+                      weight={1}
+                      fillOpacity={0.8}
+                    >
+                      <Popup>
+                        <strong>{plant}{disease ? `: ${disease}` : ""}</strong><br />
+                        {(report.confidence * 100).toFixed(1)}% confidence<br />
+                        <span style={{ fontSize: "0.75rem", color: "#666" }}>
+                          {new Date(report.created_at).toLocaleDateString()}
+                        </span>
+                      </Popup>
+                    </CircleMarker>
+                  );
+                })}
+              </MapContainer>
+            </div>
+
+            {selectedDisease !== "all" && (
+              <div className="legend-single">
+                <span className="legend-dot" style={{ background: getColor(selectedDisease) }} />
+                <span className="legend-label">{formatLabelShort(selectedDisease)}</span>
+              </div>
             )}
-          </section>
+
+            {filteredReports.length === 0 && (
+              <p className="map-empty">
+                {selectedDisease === "all"
+                  ? "No reports yet. Be the first to share your location!"
+                  : "No reports yet for this disease."}
+              </p>
+            )}
+          </div>
         )}
       </main>
     </div>
